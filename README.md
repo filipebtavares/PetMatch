@@ -1,5 +1,9 @@
 # PetMatch - Sistema de Adoção de Animais
 
+[![CI - Push](https://github.com/Rafaell-dev/PetMatch/actions/workflows/ci-push.yml/badge.svg)](https://github.com/Rafaell-dev/PetMatch/actions/workflows/ci-push.yml)
+[![DockerHub](https://badgen.net/badge/icon/docker?icon=docker&label=DockerHub&color=blue)](https://hub.docker.com/r/filipebeniciodev/petmatch-backend)
+[![Docker Image Size](https://badgen.net/docker/size/filipebeniciodev/petmatch-backend?icon=docker)](https://hub.docker.com/r/filipebeniciodev/petmatch-backend)
+
 O **Sistema de Adoção de Animais** é uma plataforma projetada para listar e gerenciar animais disponíveis para adoção, facilitando o encontro de um novo lar para animais de estimação.
 
 ## Como Executar o Projeto
@@ -16,7 +20,39 @@ O **Sistema de Adoção de Animais** é uma plataforma projetada para listar e g
 
 O servidor iniciará em [http://localhost:8080](http://localhost:8080).
 
-## Endpoint
+---
+
+## Docker
+
+A imagem Docker oficial da aplicação está hospedada e disponível publicamente no Docker Hub:
+
+* **Link no Docker Hub:** [https://hub.docker.com/r/filipebeniciodev/petmatch-backend](https://hub.docker.com/r/filipebeniciodev/petmatch-backend)
+
+### Executando com Docker
+
+Para baixar e executar o container diretamente do Docker Hub:
+
+```bash
+# Baixar a versão mais recente
+docker pull filipebeniciodev/petmatch-backend:latest
+
+# Executar a aplicação mapeando a porta 8080
+docker run -p 8080:8080 filipebeniciodev/petmatch-backend:latest
+```
+
+### Construindo a imagem localmente
+
+```bash
+# Construir a imagem local
+docker build -t filipebeniciodev/petmatch-backend .
+
+# Executar o container localmente
+docker run -p 8080:8080 filipebeniciodev/petmatch-backend
+```
+
+---
+
+## Endpoints
 
 ### Listar Animais
 Retorna uma lista de todos os animais cadastrados.
@@ -112,12 +148,28 @@ Cadastra um novo animal para adoção.
 | `201`  | Animal cadastrado com sucesso     |
 | `400`  | Dados inválidos ou ausentes       |
 
+---
+
+### Remover Animal
+Remove um animal cadastrado pelo seu identificador (ID).
+
+* **URL:** `/api/animais/:id`
+* **Método:** `DELETE`
+
+#### Respostas:
+
+| Código | Descrição                         |
+|--------|-----------------------------------|
+| `204`  | Animal removido com sucesso       |
+| `404`  | Animal não encontrado             |
+
+---
 
 ## Workflow Git
 
 Este projeto segue o fluxo de trabalho **Gitflow**:
 
 * A branch `main` contém o código estável e pronto para produção.
-* Cada nova funcionalidade deve ser desenvolvida em sua própria branch de funcionalidade, nomeada com o padrão `feature/<nome-da-funcionalidade>`.
+* Cada nova funcionalidade deve ser desenvolvida em sua própria branch de funcionalidade, nomeada com o padrão `feature/<nome-da-funcionalidade>` ou `ci/<nome>`.
 * **É estritamente proibido realizar commits diretos na branch `main`.**
 * Para integrar novas funcionalidades à branch `main`, deve-se abrir um **Pull Request (PR)**, o qual deve passar por revisão antes de ser mesclado.
