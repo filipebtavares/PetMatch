@@ -6,11 +6,14 @@ on:
       - main
       - 'feature/**'
       - 'ci/**'
+  pull_request:
+    branches:
+      - main
 
 jobs:
   # Job 1: Compilação e execução de testes automatizados com cobertura
   build-and-test:
-    name: Build & Test (Push)
+    name: Build & Test
     runs-on: ubuntu-latest
 
     steps:

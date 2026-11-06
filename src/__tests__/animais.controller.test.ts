@@ -121,7 +121,7 @@ describe('Animais API', () => {
 
       // Verificar que o animal foi removido
       const listResponse = await request(app).get('/api/animais');
-      const ids = listResponse.body.map((a: any) => a.id);
+      const ids = listResponse.body.map((a: { id: number }) => a.id);
       expect(ids).not.toContain(1);
     });
 
