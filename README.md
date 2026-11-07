@@ -165,6 +165,131 @@ Remove um animal cadastrado pelo seu identificador (ID).
 
 ---
 
+## Infraestrutura Virtual com Vagrant (VirtualBox)
+
+O projeto conta com uma configuração automatizada de infraestrutura multi-máquina gerenciada via **Vagrant** utilizando o provedor **VirtualBox**.
+
+### Arquitetura das Máquinas Virtuais
+
+| Máquina | Função | Memória RAM | Endereço IPv4 Privado (Classe C) | Descrição / Provisionamento |
+|---------|--------|-------------|-----------------------------------|-----------------------------|
+| **VM1** | Cliente de Testes | 1024 MB | `192.168.56.10` | Provisionada com utilitários de rede (`curl`, `wget`, `ping`) para testar requisições. |
+| **VM2** | Servidor Backend | 2048 MB | `192.168.56.20` | Provisionada com Node.js 20 LTS, sincronização da aplicação em `/vagrant_data`, compilação TypeScript e execução via serviço `systemd`. |
+
+> **Nota sobre a Memória da VM2:** Foram definidos **2048 MB** de memória principal para a VM2, garantindo os recursos necessários para a instalação dos módulos npm, processo de compilação TypeScript (`tsc`) e execução contínua do runtime do Node.js/Express.
+
+### Pré-requisitos
+
+Antes de iniciar, certifique-se de ter instalado em seu computador:
+* [Oracle VM VirtualBox](https://www.virtualbox.org/wiki/Downloads) (versão 6.1 ou 7.x)
+* [HashiCorp Vagrant](https://developer.hashicorp.com/vagrant/install) (versão 2.3+)
+
+---
+
+### Passo a Passo para Executar a Infraestrutura
+
+1. **Clonar e acessar o repositório:**
+   ```bash
+   git clone https://github.com/Rafaell-dev/PetMatch.git
+   cd PetMatch
+   ```
+
+2. **Inicializar as Máquinas Virtuais:**
+   Execute o comando abaixo na raiz do projeto (onde está o `Vagrantfile`). O Vagrant fará o download da box base (Ubuntu 22.04 LTS), criará as duas VMs e executará os scripts de provisionamento automaticamente:
+   ```bash
+   vagrant up
+   ```
+
+   > Caso queira subir uma máquina específica separadamente:
+   > * Subir apenas o backend: `vagrant up vm2`
+   > * Subir apenas o cliente: `vagrant up vm1`
+
+3. **Verificar o status das VMs:**
+   ```bash
+   vagrant status
+   ```
+   Ambas as máquinas (`vm1` e `vm2`) devem constar com o status `running (virtualbox)`.
+
+---
+
+### Como Testar a Rota GET dentro da VM1
+
+Após a conclusão do comando `vagrant up`, a aplicação backend na **VM2** estará em execução e escutando requisições em `http://192.168.56.20:8080`.
+
+1. **Acessar a VM1 via SSH:**
+   ```bash
+   vagrant ssh vm1
+   ```
+
+2. **Executar o teste da rota GET `/api/animais` a partir da VM1:**
+
+   * **Opção A: Testando com `curl`**
+     ```bash
+     curl -i http://192.168.56.20:8080/api/animais
+     ```
+     *(O parâmetro `-i` exibe os cabeçalhos HTTP da resposta, incluindo o status `HTTP/1.1 200 OK`).*
+
+   * **Opção B: Testando com `wget`**
+     ```bash
+     wget -qO- http://192.168.56.20:8080/api/animais
+     ```
+     *(O parâmetro `-qO-` executa a requisição silenciosamente e exibe o corpo JSON diretamente no terminal).*
+
+3. **Exemplo de Retorno Esperado:**
+   ```json
+   [
+     {
+       "id": 1,
+       "nome": "Rex",
+       "especie": "Cachorro",
+       "idade": 3,
+       "disponivel": true
+     },
+     {
+       "id": 2,
+       "nome": "Mia",
+       "especie": "Gato",
+       "idade": 2,
+       "disponivel": true
+     },
+     {
+       "id": 3,
+       "nome": "Luna",
+       "especie": "Cachorro",
+       "idade": 1,
+       "disponivel": true
+     }
+   ]
+   ```
+
+4. **Sair da sessão SSH da VM1:**
+   ```bash
+   exit
+   ```
+
+---
+
+### Comandos Úteis de Gerenciamento do Vagrant
+
+* **Pausar/Suspender as VMs:**
+  ```bash
+  vagrant suspend
+  ```
+* **Desligar as VMs graciosamente:**
+  ```bash
+  vagrant halt
+  ```
+* **Reiniciar e aplicar novos provisionamentos:**
+  ```bash
+  vagrant reload --provision
+  ```
+* **Destruir as máquinas virtuais e liberar espaço em disco:**
+  ```bash
+  vagrant destroy -f
+  ```
+
+---
+
 ## Workflow Git
 
 Este projeto segue o fluxo de trabalho **Gitflow**:
