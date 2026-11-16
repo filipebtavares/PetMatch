@@ -1,0 +1,105 @@
+---
+- name: Configurar e executar a API PetMatch em VM2
+  hosts: petmatch
+  become: true
+  vars:
+    app_repository: https://github.com/filipebtavares/PetMatch.git
+    app_directory: /opt/petmatch
+
+  tasks:
+    - name: Instalar ferramentas necessárias para Node.js
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+          - git
+          - build-essential
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Configurar repositório NodeSource para Node.js 20
+      ansible.builtin.shell: curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+      args:
+        creates: /etc/apt/sources.list.d/nodesource.list
+
+    - name: Instalar Node.js 20 e npm
+      ansible.builtin.apt:
+        name: nodejs
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Criar diretório da aplicação para o usuário vagrant
+      ansible.builtin.file:
+        path: "{{ app_directory }}"
+        state: directory
+        owner: vagrant
+        group: vagrant
+        mode: "0755"
+
+    - name: Clonar o repositório PetMatch na VM2
+      ansible.builtin.git:
+        repo: "{{ app_repository }}"
+        dest: "{{ app_directory }}"
+        version: main
+        update: true
+        force: true
+      become_user: vagrant
+
+    - name: Instalar dependências da aplicação
+      ansible.builtin.command: npm ci
+      args:
+        chdir: "{{ app_directory }}"
+      become_user: vagrant
+
+    - name: Compilar a aplicação TypeScript
+      ansible.builtin.command: npm run build
+      args:
+        chdir: "{{ app_directory }}"
+      become_user: vagrant
+      notify: Reiniciar PetMatch
+
+    - name: Criar serviço systemd da API
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/petmatch.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=PetMatch Backend API
+          After=network.target
+
+          [Service]
+          Type=simple
+          User=vagrant
+          WorkingDirectory={{ app_directory }}
+          ExecStart=/usr/bin/node {{ app_directory }}/dist/server.js
+          Restart=always
+          RestartSec=5
+          Environment=NODE_ENV=production
+          Environment=PORT=8080
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Reiniciar PetMatch
+
+    - name: Habilitar e iniciar serviço PetMatch
+      ansible.builtin.systemd:
+        name: petmatch
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Aguardar a API responder na porta 8080
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: 8080
+        delay: 2
+        timeout: 30
+
+  handlers:
+    - name: Reiniciar PetMatch
+      ansible.builtin.systemd:
+        name: petmatch
+        state: restarted
+        daemon_reload: true
