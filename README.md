@@ -173,8 +173,8 @@ O projeto conta com uma configuração automatizada de infraestrutura multi-máq
 
 | Máquina | Função | Memória RAM | Endereço IPv4 Privado (Classe C) | Descrição / Provisionamento |
 |---------|--------|-------------|-----------------------------------|-----------------------------|
-| **VM1** | Cliente de Testes | 1024 MB | `192.168.56.10` | Provisionada com utilitários de rede (`curl`, `wget`, `ping`) para testar requisições. |
-| **VM2** | Servidor Backend | 2048 MB | `192.168.56.20` | Provisionada com Node.js 20 LTS, sincronização da aplicação em `/vagrant_data`, compilação TypeScript e execução via serviço `systemd`. |
+| **VM1** | Nó de controle Ansible e cliente de testes | 1024 MB | `192.168.56.10` | Provisionada com Ansible, `curl`, `wget`, `ping` e uma chave SSH para administrar a VM2. |
+| **VM2** | Servidor Backend | 2048 MB | `192.168.56.20` | Recebe o código clonado pelo playbook, dependências Node.js 20 LTS e serviço `systemd`. |
 
 > **Nota sobre a Memória da VM2:** Foram definidos **2048 MB** de memória principal para a VM2, garantindo os recursos necessários para a instalação dos módulos npm, processo de compilação TypeScript (`tsc`) e execução contínua do runtime do Node.js/Express.
 
@@ -195,14 +195,12 @@ Antes de iniciar, certifique-se de ter instalado em seu computador:
    ```
 
 2. **Inicializar as Máquinas Virtuais:**
-   Execute o comando abaixo na raiz do projeto (onde está o `Vagrantfile`). O Vagrant fará o download da box base (Ubuntu 22.04 LTS), criará as duas VMs e executará os scripts de provisionamento automaticamente:
+   Execute o comando abaixo na raiz do projeto (onde está o `Vagrantfile`). O Vagrant fará o download da box base (Ubuntu 22.04 LTS), criará as duas VMs, instalará o Ansible na VM1 e preparará o acesso SSH entre as máquinas:
    ```bash
    vagrant up
    ```
 
-   > Caso queira subir uma máquina específica separadamente:
-   > * Subir apenas o backend: `vagrant up vm2`
-   > * Subir apenas o cliente: `vagrant up vm1`
+   Suba as duas máquinas juntas e nessa ordem: a VM1 cria a chave usada pelo Ansible e a VM2 autoriza essa chave.
 
 3. **Verificar o status das VMs:**
    ```bash
@@ -210,11 +208,38 @@ Antes de iniciar, certifique-se de ter instalado em seu computador:
    ```
    Ambas as máquinas (`vm1` e `vm2`) devem constar com o status `running (virtualbox)`.
 
+### Configuração e execução com Ansible
+
+O arquivo `ansible/ansible.cfg` e o inventário `ansible/inventory.ini` são montados em `/vagrant_data/ansible` dentro da VM1. O inventário aponta para a VM2 (`192.168.56.20`) e usa a chave SSH criada durante o provisionamento. O playbook `ansible/configura-node.yaml` instala Node.js 20 e ferramentas de compilação na VM2, clona este repositório em `/opt/petmatch`, instala as dependências com `npm ci`, compila o TypeScript e configura a API como serviço `systemd` na porta 8080.
+
+Execute o playbook a partir da VM1:
+
+```bash
+vagrant ssh vm1
+cd /vagrant_data/ansible
+ansible all -m ping
+ansible-playbook configura-node.yaml
+```
+
+O `ansible all -m ping` deve responder com `pong`. Ao final do playbook, a tarefa de espera confirma que a porta 8080 está aceitando conexões na VM2. Para verificar o serviço posteriormente, use `sudo systemctl status petmatch` na VM2.
+
+### Executar e testar a aplicação
+
+Depois de executar o playbook, a API fica disponível em `http://192.168.56.20:8080`. Na VM1, teste a rota de listagem de animais:
+
+```bash
+curl -i http://192.168.56.20:8080/api/animais
+# alternativa
+wget -qO- http://192.168.56.20:8080/api/animais
+```
+
+O `curl -i` deve mostrar o status `HTTP/1.1 200 OK` e uma resposta JSON com os animais cadastrados.
+
 ---
 
 ### Como Testar a Rota GET dentro da VM1
 
-Após a conclusão do comando `vagrant up`, a aplicação backend na **VM2** estará em execução e escutando requisições em `http://192.168.56.20:8080`.
+Após executar o playbook Ansible, a aplicação backend na **VM2** estará em execução e escutando requisições em `http://192.168.56.20:8080`.
 
 1. **Acessar a VM1 via SSH:**
    ```bash
